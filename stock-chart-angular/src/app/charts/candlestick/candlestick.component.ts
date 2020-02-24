@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { ChartserviceService } from '../chartservice.service';
-import * as CanvasJS from '../../../assets/canvasjs.min.js';
+import { createChart } from 'lightweight-charts';
 import { Chartdata } from '../chartdata';
+
 @Component({
   selector: 'app-candlestick',
   templateUrl: './candlestick.component.html',
@@ -11,10 +12,12 @@ export class CandlestickComponent implements OnInit {
   ticker = "aapl";
   dataPoints = [];
   chartdata:Chartdata;
+  chart;
+  candlestickSeries;
   constructor(private ChartService:ChartserviceService) { }
 
   ngOnInit() {
-    this.ChartService.getChartData().subscribe(
+    this.ChartService.getSwingChartData().subscribe(
       data => {
         console.log(data);
         this.chartdata=data;
@@ -22,56 +25,36 @@ export class CandlestickComponent implements OnInit {
         // console.log(this.chartdata.TimeSeries.list);
         this.ticker=this.chartdata.MetaData.Symbol;
         this.chartdata.TimeSeries.list.forEach(element => {
-          let x = element.time.split(" ");
-          let date = x[0].split("-");
-          let time = x[1].split(":");
-          let year = Number.parseInt(date[0]);
-          let month = Number.parseInt(date[1])-1;
-          let day = Number.parseInt(date[2]);
-          let hour = Number.parseInt(time[0]);
-          let minute = Number.parseInt(time[1]);
-          let second = Number.parseInt(time[2]);
-          this.dataPoints.push({
-            label: CanvasJS.formatDate(new Date(year,month,day,hour,minute,second,0)),
-            y: [
-              element.open,
-              element.high,
-              element.low,
-              element.close
-            ]
-          });
+          if(this.chartdata.MetaData.Interval){
+            this.dataPoints.push({
+              time: +element.time,
+              open: element.open,
+              high: element.high,
+              low: element.low,
+              close: element.close
+            });
+          }else{
+            this.dataPoints.push({
+              time: element.time,
+              open: element.open,
+              high: element.high,
+              low: element.low,
+              close: element.close
+            });
+          }
+          
         });
-        // this.dataPoints=this.chartdata.TimeSeries.list;
-        // console.log(this.ticker);
-        // console.log(this.dataPoints);
-        this.renderChart();
+        this.setChart();
       }
     );
-
-		
   }
-  renderChart(){
-    let chart = new CanvasJS.Chart("chartContainer", {
-		  animationEnabled: false,
-		  exportEnabled: true,
-		  title: {
-		  	text: this.ticker
-      },
-      axisY: {
-        includeZero:false,
-        prefix: "$ "
-      },
-      axisX: {
-        intervalType: "day"
-      },
-      zoomEnabled:true,
-		  data: [{
-        type: "candlestick",
-        yValueFormatString: "$##0.00",
-        connectNullData: true,
-		  	dataPoints: this.dataPoints,
-      }]
-    });
-    chart.render();
+  @HostListener('window:resize', ['$event'])
+  onResize(event) {
+    this.chart.resize(300,window.innerWidth);
+  }
+  setChart(){
+    this.chart = createChart(document.body, { width: window.innerWidth, height: 300 });
+    this.candlestickSeries = this.chart.addCandlestickSeries();
+    this.candlestickSeries.setData(this.dataPoints);
   }
 }

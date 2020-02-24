@@ -4,11 +4,13 @@ import { HttpClientModule } from '@angular/common/http';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { CandlestickComponent } from './charts/candlestick/candlestick.component';
+import { SearchComponent } from './search/search.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    CandlestickComponent
+    CandlestickComponent,
+    SearchComponent
   ],
   imports: [
     BrowserModule,

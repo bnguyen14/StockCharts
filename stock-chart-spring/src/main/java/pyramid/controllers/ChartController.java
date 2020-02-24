@@ -1,6 +1,8 @@
 package pyramid.controllers;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.List;
 
@@ -30,13 +32,26 @@ public class ChartController {
 	
 	@GetMapping(value = "/intraday/{symbol}/{interval}")
 	public ResponseEntity<RespModel> getIntradayChartData(@PathVariable String symbol, @PathVariable String interval) {
-		System.out.println("requested intraday");
-		String url = "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=MSFT&interval=1min&outputsize=full&apikey="+apiKey;
+		String url = "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=MSFT&interval=1min&apikey=demo";
 //		String url = "https://www.alphavantage.co/query?"
 //				+ "function=TIME_SERIES_INTRADAY"
 //				+ "&symbol="+symbol
 //				+ "&interval="+interval
 //				+ "&apikey="+apiKey;
+		return constructRespEntity("intraday", url);
+	}
+	
+	@GetMapping(value = "/swing/{symbol}/{interval}")
+	public ResponseEntity<RespModel> getLongChartData(@PathVariable String symbol, @PathVariable String interval) {
+		String url = "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=MSFT&apikey=demo";
+//		String url = "https://www.alphavantage.co/query?"
+//				+ "function=TIME_SERIES_"+interval.toUpperCase()
+//				+ "&symbol="+symbol
+//				+ "&apikey="+apiKey;
+		return constructRespEntity("swing", url);
+	}
+	
+	private ResponseEntity<RespModel> constructRespEntity(String format, String url) {
 		RestTemplate restTemplate = new RestTemplate();
 		ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 		ObjectMapper mapper = new ObjectMapper();
@@ -46,14 +61,11 @@ public class ChartController {
 			JSONObject obj = new JSONObject(response.getBody());
 			JSONObject timeseries = obj.getJSONObject(JSONObject.getNames(obj)[0]);
 			String[] series = JSONObject.getNames(timeseries);
-			//System.out.println(timeseries.toString());
 			Arrays.sort(series);
 			for(int i = 0; i< series.length; i++) {
-				rm.getTimeSeries().addToSeries(series[i], mapper.readValue(
-						timeseries.getJSONObject(series[i]).toString(), ChartData.class));
+				rm.getTimeSeries().addToSeries(format.equals("intraday")?dateToUnix(series[i]):series[i],
+						mapper.readValue(timeseries.getJSONObject(series[i]).toString(), ChartData.class));
 			}
-//			System.out.println(rm.toString());
-//			System.out.println(rm.getTimeSeries());
 		} catch (JsonParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -64,18 +76,17 @@ public class ChartController {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		System.out.println();
 		return new ResponseEntity<RespModel>(rm, HttpStatus.OK);
 	}
 	
-	@GetMapping(value = "/swing/{symbol}/{interval}")
-	public void getLongChartData(@PathVariable String symbol, @PathVariable String interval) {
-		String url = "https://www.alphavantage.co/query?"
-				+ "function=TIME_SERIES_"+interval.toUpperCase()
-				+ "&symbol="+symbol
-				+ "&apikey="+apiKey;
-		RestTemplate restTemplate = new RestTemplate();
-		ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-		
+	private String dateToUnix(String date) {
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		try {
+			return String.valueOf(sdf.parse(date).getTime()/1000);
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return "conversion error";
 	}
 }
